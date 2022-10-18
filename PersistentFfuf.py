@@ -1,7 +1,3 @@
-from time import time
-import random
-start_time = time()
-
 import subprocess
 import importlib.util
 import os
@@ -324,6 +320,3 @@ func_save_progress(load_save_file)
 
 
 func_cleanup()
-
-end_time = time()
-print(f'Time Taken: {(end_time-start_time)*10**3:.2f}ms')
