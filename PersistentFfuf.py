@@ -1,7 +1,12 @@
+from time import time
+import random
+start_time = time()
+
 import subprocess
 import importlib.util
 import os
 import csv
+from collections import OrderedDict
 
 # Functions
 
@@ -19,10 +24,26 @@ def func_printer(text, comment):
 
 def func_check_dependency(wordlist_dict):
     # Checking Dependencies
+    func_printer("Checking Dependencies","info")
+
+    ## Checking installation status of xterm
+    func_printer("Checking installation status of xterm","info")
+    status = subprocess.call("which xterm".split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if (status == 0 ):
+        func_printer("Xterm is already installed","success")
+    else:
+        func_printer("Installing xterm","info")
+        subprocess.call("sudo apt-get update --yes".split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.call("sudo apt-get install xterm".split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        status = subprocess.call("which xterm".split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if (status == 0):
+            func_printer("Xterm has been successfully installed","success")
+        else:
+            func_printer("Unable to install xterm. Please install it and try again", "error")
+            exit()
 
     ## Checking installation status of ffuf
-    func_printer("Checking Dependencies","info")
-    func_printer("Checking ffuf","info")
+    func_printer("Checking installation status of ffuf","info")
     status = subprocess.call("which ffuf".split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if (status == 0 ):
         func_printer("Ffuf is already installed","success")
@@ -64,12 +85,12 @@ def func_ffuf(url, wordlist_location, load_save_file):
     if (load_save_file == 0):
         print("\n")
         func_printer("Running ffuf with the provided wordlist","info")
-        subprocess.call(f"ffuf -w {wordlist_location} -u http://{url}/FUZZ -t 100 -o PersistentFfuf_Output.csv -of csv -ic".split(), stderr=subprocess.DEVNULL)
+        subprocess.call(f"xterm -e ffuf -w {wordlist_location} -u http://{url}/FUZZ -t 100 -o PersistentFfuf_Output.csv -of csv -ic".split(), stderr=subprocess.DEVNULL)
         func_printer("Ffuf has successfully executed\n", "success")
         func_printer("Your output file has been generated as: PersistentFfuf_Output.csv", "success")
     elif(load_save_file == 1):
         func_printer("Running ffuf with the optimized wordlist","info")
-        subprocess.call(f"ffuf -w {wordlist_location} -u http://{url}/FUZZ -t 100 -o temp_ffuf_output.csv -of csv -ic".split(), stderr=subprocess.DEVNULL)
+        subprocess.call(f"xterm -e ffuf -w {wordlist_location} -u http://{url}/FUZZ -t 100 -o temp_ffuf_output.csv -of csv -ic".split(), stderr=subprocess.DEVNULL)
 
         fileobj_ffuf_output = open("PersistentFfuf_Output.csv","a")
         fileobj_temp_ffuf_output = open("temp_ffuf_output.csv","r")
@@ -101,34 +122,36 @@ def func_generate_wordlist(var_jsonData, url, new_wordlist):
         "wordlist_location":""
     }
     fileobj_new_wordlist = open(new_wordlist["wordlist_location"],"r")
+    set_new_wordlist = {i for i in fileobj_new_wordlist.readlines()}
 
     for index in var_jsonData.keys():
         if (var_jsonData[index]["domain_name"] == url["domain_name"] and var_jsonData[index]["location"] == url["location"]):
             var_list_of_wordlists.append(var_jsonData[index]["wordlist_location"])
 
-    if (new_wordlist["wordlist_location"] in var_list_of_wordlists):                     # Reuse of wordlist
+    if (not var_list_of_wordlists):           # if (var_list_of_wordlists is empty)
+        fileobj_new_wordlist.close()
+        return new_wordlist
+    elif (new_wordlist["wordlist_location"] in var_list_of_wordlists):                     # Reuse of wordlist
         func_printer("This wordlist has already been used with this url.","info")
         var_optimized_wordlist["wordlist_name"] = ""
         var_optimized_wordlist["wordlist_location"] = ""
         return var_optimized_wordlist
     elif (new_wordlist["wordlist_location"] not in var_list_of_wordlists):               # Unique wordlist
-        func_printer("An omtimized wordlist is being generated", "info")
+        func_printer("An optimized wordlist is being generated", "info")
         fileobj_optimized_wordlist = open("optimized_wordlist.txt","a+")
+        set_comb_wordlist = set()
         for loop in range(len(var_list_of_wordlists)):
-            fileobj_list_wordlist = open(var_list_of_wordlists[loop],"r")            # This is the old wordlist
-            file_list_wordlist = fileobj_list_wordlist.readlines()
-            while True:
-                word = fileobj_new_wordlist.readline()
-                if (word == ""):
-                    break
-                elif (word not in file_list_wordlist):
-                    fileobj_optimized_wordlist.write(word)
-                else:
-                    continue
+            fileobj_old_wordlist = open(var_list_of_wordlists[loop],"r")            # This is the old wordlist
+            for i in fileobj_old_wordlist.readlines():
+                set_comb_wordlist.add(i)      # All words of old wordlist are stored in a list
+        
+        for i in set_new_wordlist:
+            if (i not in set_comb_wordlist):
+                fileobj_optimized_wordlist.write(i)
         
         fileobj_new_wordlist.close()
         fileobj_optimized_wordlist.close()
-        fileobj_list_wordlist.close()
+        fileobj_old_wordlist.close()
         var_optimized_wordlist["wordlist_name"] = "optimized_wordlist.txt"
         var_optimized_wordlist["wordlist_location"] = "optimized_wordlist.txt"
         return var_optimized_wordlist
@@ -186,16 +209,13 @@ def func_CSV2JSON():
 
 
 # This function performs a cleanup of all the temporary files created in the process
-def func_cleanup(load_save_file):
-    if (load_save_file == 0):
-        exit()
-    elif (load_save_file == -1):
-        os.remove("optimized_wordlist.txt")
-    elif (load_save_file == 1):
-        os.remove("optimized_wordlist.txt")
+def func_cleanup():
+    '''if (os.path.exists("optimized_wordlist.txt") == True):
+        os.remove("optimized_wordlist.txt")'''
+    if (os.path.exists("temp_ffuf_output.csv") == True):
         os.remove("temp_ffuf_output.csv")
-    else:
-        func_printer("Fatal error during cleanup","error")
+    if (os.path.exists("temp_ffuf_output.csv") == True):
+        os.remove("temp_ffuf_output.csv")
 
 
 
@@ -303,4 +323,7 @@ else:                                                       # The process is run
 func_save_progress(load_save_file)
 
 
-func_cleanup(load_save_file)
+func_cleanup()
+
+end_time = time()
+print(f'Time Taken: {(end_time-start_time)*10**3:.2f}ms')
