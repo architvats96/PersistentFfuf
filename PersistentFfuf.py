@@ -1,12 +1,102 @@
+import argparse
 import subprocess
 import importlib.util
 import os
 import csv
-from collections import OrderedDict
 
 # Functions
 
-# This function is used to handle all of the printing in the entire program
+def func_generate_wordlist():
+    wordlist_dict = {
+        1:{"name":"", "location":"/usr/share/seclists/Discovery/Web-Content/Apache.fuzz.txt", "size":""},
+        2:{"name":"", "location":"/usr/share/seclists/Discovery/Web-Content/apache.txt", "size":""},
+        3:{"name":"", "location":"/usr/share/seclists/Discovery/Web-Content/big.txt", "size":""},
+        4:{"name":"", "location":"/usr/share/seclists/Discovery/Web-Content/common.txt", "size":""},
+        5:{"name":"", "location":"/usr/share/seclists/Discovery/Web-Content/directory-list-2.3-big.txt", "size":""},
+        6:{"name":"", "location":"/usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt", "size":""},
+        7:{"name":"", "location":"/usr/share/seclists/Discovery/Web-Content/directory-list-2.3-small.txt", "size":""},
+        8:{"name":"", "location":"/usr/share/seclists/Discovery/Web-Content/dirsearch.txt", "size":""},
+        9:{"name":"", "location":"/usr/share/seclists/Discovery/Web-Content/tests.txt", "size":""}
+    }
+
+    wordlist_dict_name = []
+    maxlen = 0
+    for i in range(1,len(wordlist_dict)+1):
+        file_size = str(round(((os.path.getsize(wordlist_dict[i]["location"]))/1000),2)) + "KB"
+        wordlist_dict[i]["size"] = file_size
+        wordlist_dict[i]["name"] = wordlist_dict[i]["location"].split("/")[-1]
+        wordlist_dict_name.append(wordlist_dict[i]["name"])
+        length = len(wordlist_dict[i]["name"])
+        if (length > maxlen):
+            maxlen = length
+            
+    return wordlist_dict, maxlen
+
+## This function is used to input URL and wordlist from the user
+def func_input(wordlist_dict, maxlen):
+    ### Creating an augument parser for URL and wordlist
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--url', type=str, required=False)
+    parser.add_argument('--wordlist', type=str, required=False)
+    argument = parser.parse_args()
+
+    ### Entering URL
+    location = ""
+    if (argument.url == None):                  ### If the user hasn't provided URL
+        url = input("\nPlease enter the URL: ")
+        location = ""
+        for i in url.split("/")[1:]:
+            location = location + "/" + i
+        if (location == ""):
+            location = "/"
+        url = {                                 ### Creating a dictionary for URL consisting of domain_name and location
+            "domain_name":url.split("/")[0],
+            "location":location
+        }
+    else:                                       ### If the user has provided the URL
+        for i in argument.url.split("/")[1:]:
+            location = location + "/" + i
+        if (location == ""):
+            location = "/"
+        url = {                                 ### Creating a dictionary for URL consisting of domain_name and location
+            "domain_name":argument.url.split("/")[0],
+            "location":location
+        }
+
+    ### Entering wordlist
+    if (argument.wordlist == None):
+        while True:                                 # This loop runs until a wordlist is decided
+            for i in range(1,len(wordlist_dict)+1):
+                print(f"%d) %-{maxlen}s %-{maxlen}s" %(i, wordlist_dict[i]["name"], wordlist_dict[i]["size"]))
+            print(f"{0}) Custom wordlist")
+    
+            # Deciding wordlist
+            wordlist_choice = input("Which wordlist would you like to use: ")
+            if (wordlist_choice in wordlist_dict):
+                wordlist = wordlist_dict[wordlist_choice]["location"]
+                break
+            elif (wordlist_choice == "0"):
+                wordlist = input("Please enter the path to your custom wordlist: ").strip()
+                if (os.path.exists(f"{wordlist}") == True):
+                    break
+                else:
+                    func_printer(f"{wordlist} doesn't exist. Please try again", "error")
+            else:
+                func_printer("Invalid wordlist choice. Please try again.", "error")
+    
+    else:
+        wordlist = argument.wordlist
+    
+    ### Creating a dictionary for wordlist consisting of name and location
+    wordlist = {
+        "wordlist_name":wordlist.split("/")[-1],
+        "wordlist_location":wordlist
+        }
+
+    return url,wordlist
+    
+
+## This function is used to handle all of the printing in the entire program
 def func_printer(text, comment):
     # The comments can be info, success or error
     if (comment == "info"):
@@ -57,10 +147,11 @@ def func_check_dependency(wordlist_dict):
     ## Checking installation status of wordlists
     func_printer("Checking wordlists","info")
     check = 0
-    for element in wordlist_dict:
-        wordlist_dict_value = wordlist_dict[f"{element}"]
-        if (os.path.exists(f"{wordlist_dict_value}") == 0):
-            func_printer(f"{wordlist_dict_value} does not exist", "error")
+    for i in wordlist_dict:
+        wordlist_name = wordlist_dict[i]["name"]
+        wordlist_location = wordlist_dict[i]["location"]
+        if (os.path.exists(f"{wordlist_location}") == 0):
+            func_printer(f"{wordlist_name} does not exist", "error")
             check = check + 1
     if (check == 0):
         func_printer("Wordlists exists", "success")
@@ -111,7 +202,7 @@ def func_ffuf(url, wordlist_location, load_save_file):
         exit()
 
 
-def func_generate_wordlist(var_jsonData, url, new_wordlist):
+def func_optimize_wordlist(var_jsonData, url, new_wordlist):
     var_list_of_wordlists = []
     var_optimized_wordlist = {              # var_optimized_wordlist contains the name and location of optimized wordlist
         "wordlist_name":"",                 # new_wordlist contains the name and location of new wordlist
@@ -238,64 +329,9 @@ print(colored("By Archit Vats","green"))
 print("---------------------------------------------------------------------------------")
 print("\n\n")
 
-wordlist = ""
-wordlist_dict = {"1":"/usr/share/seclists/Discovery/Web-Content/Apache.fuzz.txt",
-"2":"/usr/share/seclists/Discovery/Web-Content/apache.txt",
-"3":"/usr/share/seclists/Discovery/Web-Content/big.txt",
-"4":"/usr/share/seclists/Discovery/Web-Content/common.txt",
-"5":"/usr/share/seclists/Discovery/Web-Content/directory-list-2.3-big.txt",
-"6":"/usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt",
-"7":"/usr/share/seclists/Discovery/Web-Content/directory-list-2.3-small.txt",
-"8":"/usr/share/seclists/Discovery/Web-Content/dirsearch.txt",
-"9":"/usr/share/seclists/Discovery/Web-Content/tests.txt"}
-
+wordlist_dict, maxlen = func_generate_wordlist()
 func_check_dependency(wordlist_dict)
-
-# Creating a dictionary for URL consisting of domain_name and location
-url = input("\nPlease enter the URL: ")
-location = ""
-for i in url.split("/")[1:]:
-    location = location + "/" + i
-if (location == ""):
-    location = "/"
-url = {
-    "domain_name":url.split("/")[0],
-    "location":location
-}
-
-
-while True:                                 # This loop runs until a wordlist is decided
-    print("\n1) Apache.fuzz.txt")
-    print("2) apache.txt")
-    print("3) big.txt")
-    print("4) common.txt")
-    print("5) directory-list-2.3-big.txt")
-    print("6) directory-list-2.3-medium.txt")
-    print("7) directory-list-2.3-small.txt")
-    print("8) dirsearch.txt")
-    print("9) tests.txt")
-    print("0) Custom Wordlist")
-
-
-    # Deciding wordlist
-    wordlist_choice = input("Which wordlist would you like to use: ")
-    if (wordlist_choice in wordlist_dict):
-        wordlist = wordlist_dict[f"{wordlist_choice}"]
-        break
-    elif (wordlist_choice == "0"):
-        wordlist = input("Please enter the path to your custom wordlist: ").strip()
-        if (os.path.exists(f"{wordlist}") == True):
-            break
-        else:
-            print(colored(f"\n{wordlist} doesn't exist. Please try again", "red"))
-    else:
-        print(colored("\nInvalid wordlist choice. Please try again.", "red"))
-
-# Creating a dictionary for wordlist consisting of name and location
-wordlist = {
-    "wordlist_name":wordlist.split("/")[-1],
-    "wordlist_location":wordlist
-    }
+url,wordlist = func_input(wordlist_dict, maxlen)
             
 # Deciding whether the process is running for the first time or resuming
 if (os.path.exists(f"PersistentFfuf_SaveFile.csv") == True):               # The process is resuming
@@ -304,7 +340,7 @@ if (os.path.exists(f"PersistentFfuf_SaveFile.csv") == True):               # The
     func_printer("A previous run of the program is found and thus the process is resumed", "success")
     
     var_jsonData = func_CSV2JSON()
-    var_optimized_wordlist = func_generate_wordlist(var_jsonData, url, wordlist)
+    var_optimized_wordlist = func_optimize_wordlist(var_jsonData, url, wordlist)
     if (var_optimized_wordlist["wordlist_location"] == ""):
         func_printer("Thus, there's no need to run ffuf again with this wordlist","info")
         func_printer("The process has been successfully completed","success")
@@ -317,6 +353,4 @@ else:                                                       # The process is run
     func_ffuf(url["domain_name"] + url["location"], wordlist["wordlist_location"], load_save_file)
 
 func_save_progress(load_save_file)
-
-
 func_cleanup()
