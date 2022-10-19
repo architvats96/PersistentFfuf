@@ -82,7 +82,7 @@ def func_input(wordlist_dict, maxlen):
             print(f"{0}) Custom wordlist")
     
             # Deciding wordlist
-            wordlist_choice = input("Which wordlist would you like to use: ")
+            wordlist_choice = int(input("Which wordlist would you like to use: "))            
             if (wordlist_choice in wordlist_dict):
                 wordlist = wordlist_dict[wordlist_choice]["location"]
                 break
