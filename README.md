@@ -13,4 +13,5 @@ python3 PersistentFfuf.py --url <URL> --wordlist <wordlist_location>
 python3 PersistentFfuf.py
 
 For Example
-python3 PersistentFfuf.py --url 0.0.0.0 --wordlist /usr/share/seclists/Discovery/Web-Content/common.txt
+
+  python3 PersistentFfuf.py --url 0.0.0.0 --wordlist /usr/share/seclists/Discovery/Web-Content/common.txt
