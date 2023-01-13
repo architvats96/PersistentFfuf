@@ -55,23 +55,18 @@ def func_input(wordlist_dict, maxlen):
     location = ""
     if (argument.url == None):                  ### If the user hasn't provided URL
         url = input("\nPlease enter the URL: ")
-        location = ""
-        for i in url.split("/")[1:]:
-            location = location + "/" + i
-        if (location == ""):
-            location = "/"
+    else:
+        url = argument.url
+        
+    if (url.find("/") == -1):
         url = {                                 ### Creating a dictionary for URL consisting of domain_name and location
-            "domain_name":url.split("/")[0],
-            "location":location
+            "domain_name":url,
+            "location":""
         }
-    else:                                       ### If the user has provided the URL
-        for i in argument.url.split("/")[1:]:
-            location = location + "/" + i
-        if (location == ""):
-            location = "/"
+    else:
         url = {                                 ### Creating a dictionary for URL consisting of domain_name and location
-            "domain_name":argument.url.split("/")[0],
-            "location":location
+            "domain_name":url[0:url.find("/")],
+            "location":url[url.find("/"):]
         }
 
     ### Entering wordlist
